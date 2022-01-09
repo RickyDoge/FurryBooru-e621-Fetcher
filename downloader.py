@@ -60,12 +60,17 @@ class Downloader:
             if self.__semap.value == 0:
                 break
             time.sleep(1)
-            _downloaded_num = downloaded_num + downloading_num - self.__semap.value
-            print('\r{}/ {} images have been downloaded.'.format(webpage_url, _downloaded_num), end='')
+            self.print_process(webpage_url, downloaded_num, downloading_num)
+        self.print_process(webpage_url, downloaded_num, downloading_num)
+        print()
 
     def close(self):
         self.__processes_pool.close()
         self.__processes_pool.join()
+
+    def print_process(self, webpage_url, downloaded_num, downloading_num):
+        _downloaded_num = downloaded_num + downloading_num - self.__semap.value
+        print('\rURL: {}/ {} files have been downloaded.'.format(webpage_url, _downloaded_num), end='')
 
     @staticmethod
     def get_logger():

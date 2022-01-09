@@ -7,22 +7,32 @@ from bs4 import BeautifulSoup
 def main(webpage_url: str, mode: str):
     downloader = Downloader()
     num_downloaded = 0
+    if webpage_url[-1] == '/':
+        webpage_url = webpage_url[:len(webpage_url) - 1]
+
     while True:
-        # get html and decode
+        # get and decode html, and then download images
         html = downloader.get_html(webpage_url)
-        image_urls, image_fnames = decode_html(html)
+        soup = BeautifulSoup(html, features="lxml").find('div', id="posts-container")
+        articles = soup.find_all('article', attrs={'id': True})
+        image_urls = []
+        for i, article in enumerate(articles):
+            article_id = article['id'][5:]
+            url = 'https://e621.net/posts/' + article_id
+            img_soup = BeautifulSoup(downloader.get_html(url), features="lxml")
+            img_url = img_soup.find('a', class_=re.compile('^button'))['href']
+            img_fname = [url.split('/')[-1] for url in image_urls]
+
+            image_urls.append(img_url)
+            downloader.create_download_task(img_url, img_fname)
+            downloader.print_process(webpage_url, num_downloaded, i + 1)
 
         if len(image_urls) == 0:
             break
 
-        # multiprocessing downloading images (default: 4), you can modify num_processes in downloader.py
-        for image_url, fname in zip(image_urls, image_fnames):
-            downloader.create_download_task(image_url, fname)
-
         # wait until all download processes complete
         downloader.wait(webpage_url, num_downloaded, len(image_urls))
         num_downloaded += len(image_urls)
-        print('\r{}/ {} images have been downloaded.'.format(webpage_url, num_downloaded), end='')
         if mode == "ONE_PAGE":
             break
 
@@ -41,13 +51,6 @@ def main(webpage_url: str, mode: str):
             webpage_url = re.sub("page=\d+", "page={}".format(page + 1), webpage_url)
 
     downloader.close()
-
-
-def decode_html(html):
-    img_elements = BeautifulSoup(html, features="lxml").find_all('img', class_="has-cropped-false")
-    image_urls = [img_ele['src'].replace('/preview', '') for img_ele in img_elements]
-    image_fnames = [url.split('/')[-1] for url in image_urls]
-    return image_urls, image_fnames
 
 
 if __name__ == '__main__':
